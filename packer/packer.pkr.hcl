@@ -24,32 +24,19 @@ source "amazon-ebs" "nginx" {
 }
 
 
-#-----------------------------
-# source: Build AMI for Python
-#-----------------------------
+#--------------------------------------
+# source: Build AMI for Python and Java
+#--------------------------------------
 
-source "amazon-ebs" "python" {
+source "amazon-ebs" "python-java" {
     region = "eu-west-1"
     instance_type = "c7i-flex.large"
     ssh_username = "ec2-user"
     source_ami  = "ami-09c54d172e7aa3d9a"
-    ami_name = "python-packer"
+    ami_name = "python-java-packer"
     ami_virtualization_type  = "hvm"
 }
 
-
-#-----------------------------
-# source: Build AMI for Java
-#-----------------------------
-
-source "amazon-ebs" "java" {
-    region = "eu-west-1"
-    instance_type = "c7i-flex.large"
-    ssh_username = "ec2-user"
-    source_ami  = "ami-09c54d172e7aa3d9a"
-    ami_name = "java-packer"
-    ami_virtualization_type  = "hvm"
-}
 
 
 #------------------------------------
@@ -79,41 +66,22 @@ build  {
 }
 
 build  {
-    name  = "python-ami-build"
+    name  = "python-java-ami-build"
     sources = [
-        "source.amazon-ebs.python" 
+        "source.amazon-ebs.python-java" 
     ]
 
     provisioner "shell" {
         inline = [
             "sudo yum update -y",
-            "sudo yum install git -y"
+            "sudo yum install git -y",
+            "sudo yum install java-17-amazon-corretto -y"
         ]
     }
 
     post-processor "shell-local" {
-        inline = ["echo 'AMI build is finished For Python' "]
+        inline = ["echo 'AMI build is finished For Python-Java' "]
     }
-}
-
-build  {
-    name  = "java-ami-build"
-    sources = [
-        "source.amazon-ebs.java"
-    ]
-
-    provisioner "shell" {
-        inline = [
-            "sudo yum update -y",
-            "sudo yum install java-17-amazon-corretto -y",
-            "sudo yum install git -y"
-        ]
-    }
-
-    post-processor "shell-local" {
-        inline = ["echo 'AMI build is finished For Java' "]
-    }
-
 }
 
 

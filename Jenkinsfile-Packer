@@ -4,7 +4,7 @@ pipeline {
     parameters {
         choice (
             name: 'AMI_TYPE', 
-            choices: ['all', 'nginx', 'python', 'java'],
+            choices: ['all', 'nginx', 'python-java'],
             description: "Pick your desired AMI to create"
         )
     }
