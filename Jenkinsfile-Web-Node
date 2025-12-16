@@ -1,0 +1,104 @@
+pipeline{
+    agent any
+
+    parameters{
+        string(
+            name: 'NGINX_IP',
+            defaultValue: '',
+            description: 'Nginx instance IP address'
+        )
+    }
+
+    environment {
+        AWS_SECRET_ACCESS_KEY = credentials ('AWS_SECRET_ACCESS_KEY')
+        AWS_ACCESS_KEY_ID = credentials ('AWS_ACCESS_KEY_ID')
+        AWS_DEFAULT_REGION = 'eu-west-1'
+        SSH_USER = credentials ('SSH_USER')
+    }
+
+    stages{
+
+        stage('Validate Parameter') {
+            steps {
+                script {
+                    if (params.NGINX_IP == '') {
+                        error('NGINX_IP parameter is required!')
+                    }
+                }
+            }
+        }
+
+        stage ('Checkout'){
+            steps{
+                checkout scm
+            }
+        }
+
+        stage('Test SSH Connection') {
+            steps {
+                script {
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                echo "SSH connection successful!"
+                                sudo systemctl status nginx --no-pager | head -5
+                            '
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy Web') {
+            steps {
+                sshagent(credentials: ['AWS-SSH-KEY']) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no -r web/* ${SSH_USER}@${params.NGINX_IP}:/web &&
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} \
+                        "sudo cp -r /web/* /usr/share/nginx/html/"
+                    """
+                }
+            }
+        }
+
+        stage('Restart Nginx') {
+            steps {
+                script {
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                sudo systemctl restart nginx
+                                sleep 2
+                                sudo systemctl status nginx --no-pager | head -10
+                            '
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    echo "Verifying deployment..."
+                    sshagent(credentials: ['AWS-SSH-KEY']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
+                                echo "Files in Nginx directory:"
+                                ls -ltra web
+                            '
+                        """
+                    }
+                }
+            }
+        }
+    }
+    post {
+        success {
+            echo 'Deployment completed successfully!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
