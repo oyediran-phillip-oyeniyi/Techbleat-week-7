@@ -87,7 +87,7 @@ pipeline{
                         sh """
                             ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} '
                                 echo "Files in Nginx directory:"
-                                ls -ltra web
+                                ls -ltra /usr/share/nginx/html
                             '
                         """
                     }
