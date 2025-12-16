@@ -53,11 +53,14 @@ pipeline{
             steps {
                 sshagent(credentials: ['AWS-SSH-KEY']) {
                     sh """
-                        scp -o StrictHostKeyChecking=no -r web/* ${SSH_USER}@${params.NGINX_IP}:/usr/share/nginx/html
+                        scp -o StrictHostKeyChecking=no -r web/* ${SSH_USER}@${params.NGINX_IP}:/tmp/web/
+                        ssh -o StrictHostKeyChecking=no ${SSH_USER}@${params.NGINX_IP} \
+                        "sudo cp -r /tmp/web/* /usr/share/nginx/html/ && sudo chown -R root:root /usr/share/nginx/html/"
                     """
                 }
             }
         }
+
         stage('Restart Nginx') {
             steps {
                 script {
